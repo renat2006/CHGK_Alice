@@ -7,6 +7,7 @@ from aiohttp import web
 from aioalice import Dispatcher, get_new_configured_app, types
 from aioalice.dispatcher import MemoryStorage
 from dotenv import load_dotenv
+
 load_dotenv()
 WEBHOOK_URL_PATH = '/my-alice-webhook/'  # webhook endpoint
 
@@ -21,6 +22,7 @@ logging.basicConfig(format=u'%(filename)s [LINE:%(lineno)d] #%(levelname)-8s [%(
 # Создаем экземпляр диспетчера и подключаем хранилище в памяти
 dp = Dispatcher(storage=MemoryStorage(), skill_id=SKILL_ID, oauth_token=OAUTH_TOKEN)
 
+
 def get_random_question():
     conn = psycopg2.connect("""
         host=rc1b-1dkhcvps79tr5wu2.mdb.yandexcloud.net
@@ -33,9 +35,7 @@ def get_random_question():
 
     cur = conn.cursor()
 
-
     cur.execute("SELECT * FROM questions ORDER BY random() LIMIT 1")
-
 
     result = cur.fetchone()
     random_string = result[0] if result else ''
@@ -45,6 +45,7 @@ def get_random_question():
     print("ok")
     return random_string
 
+
 class GameStates(Helper):
     mode = HelperMode.snake_case
 
@@ -52,12 +53,14 @@ class GameStates(Helper):
     GUESS_NUM = Item()  # = guess_num
     THIMBLES = Item()  # = thimbles
 
+
 @dp.request_handler(func=lambda areq: areq.session.new)
 async def handle_new_session(alice_request):
     print(alice_request)
 
     print(get_random_question())
     return alice_request.response('Привет! Купи слона!', buttons=["Прив"])
+
 
 if __name__ == '__main__':
     app = get_new_configured_app(dispatcher=dp, path=WEBHOOK_URL_PATH)
