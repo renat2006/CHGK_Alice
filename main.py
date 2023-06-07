@@ -16,7 +16,7 @@ from store import *
 load_dotenv()
 WEBHOOK_URL_PATH = '/my-alice-webhook/'  # webhook endpoint
 
-WEBAPP_HOST = 'localhost'
+WEBAPP_HOST = 'https://chgk.onrender.com'
 WEBAPP_PORT = 3001
 SKILL_ID = os.getenv("SKILL_ID")
 OAUTH_TOKEN = os.getenv("OAUTH_TOKEN")
