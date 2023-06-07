@@ -129,7 +129,7 @@ async def check_intent(alice_request):
 
 async def get_random_question(count=1):
     conn = psycopg2.connect("""
-        host=dpg-chvfbf1mbg5b5peta760-a.oregon-postgres.render.com
+        host=dpg-chvfbf1mbg5b5peta760-a
         port=5432
         dbname=chgk_95ks
         user=renat
