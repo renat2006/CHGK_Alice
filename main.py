@@ -22,6 +22,7 @@ WEBAPP_PORT = 3001
 SKILL_ID = os.getenv("SKILL_ID")
 OAUTH_TOKEN = os.getenv("OAUTH_TOKEN")
 
+
 logging.basicConfig(format=u'%(filename)s [LINE:%(lineno)d] #%(levelname)-8s [%(asctime)s]  %(message)s',
                     level=logging.INFO)
 nltk.download('punkt')
