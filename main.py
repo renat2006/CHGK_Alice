@@ -227,8 +227,11 @@ async def update_turn(user_id):
     return code
 
 
-async def update_points(user_id):
-    left_points = await get_data(user_id, 'left_points')
+async def update_points(user_id, points=-9):
+    if points == -9:
+        left_points = await get_data(user_id, 'left_points')
+    else:
+        left_points = 10
     players_data = await get_data(user_id, 'users_data')
     player_id = await get_curr_turn(user_id)
     players_data[player_id]['points'] += left_points
@@ -596,7 +599,10 @@ async def handle_game(alice_request):
                 points = 10
             point_word = await agree_word(int(points), ['балл', 'балла', 'баллов'])
             text = f"{random.choice(right_answer_messages)} Вы получаете {points} {point_word}. "
-            await update_points(m.user_id)
+            if is_super_round:
+                await update_points(m.user_id, points=10)
+            else:
+                await update_points(m.user_id, points=10)
             print(await get_data(m.user_id, 'users_data'))
             await update_excluded_ids(m.user_id, question_data[0])
             code = await update_turn(m.user_id)
