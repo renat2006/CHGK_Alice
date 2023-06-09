@@ -270,11 +270,7 @@ async def make_out_text(user_id):
     return text
 
 
-
-
-
-async def agree_verb_with_proper_noun(verb, proper_noun):
-    morph = pymorphy2.MorphAnalyzer()
+async def agree_verb_with_proper_noun(verb, proper_noun, morph):
     parsed = morph.parse(proper_noun)
     noun_info = parsed[0]
     gender = noun_info.tag.gender
@@ -289,13 +285,13 @@ async def agree_verb_with_proper_noun(verb, proper_noun):
         return verb
 
 
-async def make_end_text(user_id):
+async def make_end_text(user_id, morph):
     text = 'Вот и всё на этом! Осталось лишь подвести итоги нашей игры. А вот как раз и они: '
 
     users_data = dict(await get_data(user_id, 'users_data'))
     for data in list(list(users_data.values())):
         point_word = await agree_word(int(data["points"]), ['балл', 'балла', 'баллов'])
-        text += f'{data["name"]} {await agree_verb_with_proper_noun("набра", data["name"])} {data["points"]} {point_word}, '
+        text += f'{data["name"]} {await agree_verb_with_proper_noun("набра", data["name"], morph)} {data["points"]} {point_word}, '
     text = text[:-2] + '. '
     sorted_lst = sorted(list(users_data.values()), key=lambda x: x["points"], reverse=True)
     text += f'И победителем нашей викторины становится {sorted_lst[0]["name"]}! '
@@ -651,7 +647,8 @@ async def handle_game(alice_request):
 
                 elif code == 3:
                     new_round_tts += sounds['end']
-                    text += await make_end_text(m.user_id)
+                    morph = pymorphy2.MorphAnalyzer()
+                    text += await make_end_text(m.user_id, morph)
                     res_sound = sounds['res']
                     end_text = 'И теперь точно всё на этом, увидимся в следующей викторине!'
                     turn_text = ''
