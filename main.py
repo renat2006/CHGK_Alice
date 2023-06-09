@@ -602,7 +602,7 @@ async def handle_game(alice_request):
             if is_super_round:
                 await update_points(m.user_id, points=10)
             else:
-                await update_points(m.user_id, points=10)
+                await update_points(m.user_id)
             print(await get_data(m.user_id, 'users_data'))
             await update_excluded_ids(m.user_id, question_data[0])
             code = await update_turn(m.user_id)
