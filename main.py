@@ -5,6 +5,7 @@ import re
 import nltk
 import psycopg2
 import pymorphy2
+import pymorphy2_dicts_ru
 
 from aioalice.utils.helper import Helper, HelperMode, Item
 from aiohttp import web
@@ -20,7 +21,7 @@ WEBAPP_HOST = 'localhost'
 WEBAPP_PORT = 3001
 SKILL_ID = os.getenv("SKILL_ID")
 OAUTH_TOKEN = os.getenv("OAUTH_TOKEN")
-
+pymorphy2_dicts_ru.get_path()
 logging.basicConfig(format=u'%(filename)s [LINE:%(lineno)d] #%(levelname)-8s [%(asctime)s]  %(message)s',
                     level=logging.INFO)
 nltk.download('punkt')
