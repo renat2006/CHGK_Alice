@@ -4,24 +4,22 @@ import random
 import re
 import nltk
 import psycopg2
+import pymorphy2
 
 from aioalice.utils.helper import Helper, HelperMode, Item
 from aiohttp import web
 from aioalice import Dispatcher, get_new_configured_app, types
 from aioalice.dispatcher import MemoryStorage, SkipHandler
 from dotenv import load_dotenv
-# from natasha import NamesExtractor, MorphVocab
 from store import *
 
 load_dotenv()
 WEBHOOK_URL_PATH = '/my-alice-webhook/'  # webhook endpoint
 
-WEBAPP_HOST = 'https://chgk.onrender.com'
-
+WEBAPP_HOST = 'localhost'
 WEBAPP_PORT = 3001
 SKILL_ID = os.getenv("SKILL_ID")
 OAUTH_TOKEN = os.getenv("OAUTH_TOKEN")
-
 
 logging.basicConfig(format=u'%(filename)s [LINE:%(lineno)d] #%(levelname)-8s [%(asctime)s]  %(message)s',
                     level=logging.INFO)
@@ -48,7 +46,7 @@ class GameStates(Helper):
     PLAYERS_CHECK = Item()
     PLAYERS_RIGHT_CHECK = Item()
     GAME = Item()
-    QUESTION = Item()
+    SUPER = Item()
 
 
 class Message:
@@ -129,18 +127,20 @@ async def check_intent(alice_request):
         return None
 
 
-async def get_random_question(count=1):
+async def get_random_question(excluded_ids, count=1):
     conn = psycopg2.connect("""
-        host=dpg-chvfbf1mbg5b5peta760-a
+        host=185.185.68.54
         port=5432
-        dbname=chgk_95ks
-        user=renat
-        password=EPizgmuiDTY2ARVpIqmsonYEchlNhlxs
+        dbname=chgk
+        user=postgres
+        password=Taner2320
     """)
 
+    excluded_ids_str = ', '.join(str(idd) for idd in excluded_ids)
+    print(f'SELECT * FROM questions WHERE id NOT IN ({excluded_ids_str}) ORDER BY random() LIMIT {count}')
     cur = conn.cursor()
 
-    cur.execute(f"SELECT * FROM questions ORDER BY random() LIMIT {count}")
+    cur.execute(f"SELECT * FROM questions WHERE id NOT IN ({excluded_ids_str}) ORDER BY random() LIMIT {count}")
 
     result = cur.fetchone()
     questions = result if result else ''
@@ -179,27 +179,52 @@ async def update_hint_count(user_id, hint_count):
     await dp.storage.update_data(user_id, hint_count=hint_count)
 
 
+async def update_excluded_ids(user_id, new_id):
+    excluded_ids = await get_data(user_id, 'excluded_ids')
+    excluded_ids = list(excluded_ids)
+    excluded_ids.append(new_id)
+
+    await dp.storage.update_data(user_id, excluded_ids=excluded_ids)
+
+
 async def update_turn(user_id):
-    new_question = await get_random_question()
     player_list = await get_players_list(user_id)
     player_count = len(player_list
                        )
     curr_turn = await get_curr_turn(user_id)
-
+    code = 0
     curr_round_turn = await get_data(user_id, 'curr_round_turn')
     turns_in_this_round = await get_data(user_id, 'turns_in_this_round')
+    player_list = await get_players_list(user_id)
     curr_round = await get_data(user_id, 'curr_round')
-    if (curr_turn + 1) % player_count == 0:
-        curr_round_turn = (curr_turn + 1) % turns_in_this_round
+    if player_count and (curr_turn + 1) % player_count == 0:
+        curr_round_turn += 1
         print('new round turn')
-    if curr_round_turn == 0:
-        curr_round = (curr_round + 1) % max_rounds
+    if curr_round_turn == turns_in_this_round:
+        print('tr', turns_in_this_round)
+
+        curr_round_turn = 0
+        curr_round += 1
+
+        turns_in_this_round = random.randrange(2, 4)
         print("new round")
+        code = 1
+    if curr_round == max_rounds - 1:
+        curr_round = 0
+        turns_in_this_round = 10 ** 9
+        code = 2
+        await dp.storage.update_data(user_id, is_super_round=1)
+    if not player_list:
+        code = 3
     print("next turn")
     print(curr_round_turn, curr_round)
+    if player_count:
+        curr_turn = (curr_turn + 1) % player_count
     await dp.storage.update_data(user_id,
-                                 curr_turn=(curr_turn + 1) % player_count, curr_question=new_question, hint_count=0,
-                                 left_points=points_for_win, curr_round_turn=curr_round_turn, curr_round=curr_round)
+                                 curr_turn=curr_turn, hint_count=0,
+                                 left_points=points_for_win, curr_round_turn=curr_round_turn, curr_round=curr_round,
+                                 turns_in_this_round=turns_in_this_round)
+    return code
 
 
 async def update_points(user_id):
@@ -219,14 +244,112 @@ async def update_left_points(user_id, point_to_minus):
 async def make_turn_text(user_id):
     text = random.choice(turn_messages)
     curr_turn = await get_curr_turn(user_id)
+
     name = await get_players_list(user_id)
     name = name[curr_turn]
     text = text.format(name)
-    question = await get_random_question()
+    excluded_ids = await get_data(user_id, 'excluded_ids')
+    question = await get_random_question(list(excluded_ids))
     print(question)
     await update_question(user_id, question)
     text += question[1]
     return text
+
+
+async def make_out_text(user_id):
+    text = random.choice(out_messages)
+    curr_turn = await get_curr_turn(user_id)
+
+    name = await get_players_list(user_id)
+    name = name[curr_turn]
+    text = text.format(name)
+    player_list = list(await get_players_list(user_id))
+    player_list.pop(int(curr_turn))
+    await dp.storage.update_data(user_id, user_list=player_list, curr_turn=curr_turn - 1)
+
+    return text
+
+
+async def agree_verb_with_proper_noun(verb, proper_noun):
+    morph = pymorphy2.MorphAnalyzer()
+    parsed = morph.parse(proper_noun)
+    noun_info = parsed[0]
+    gender = noun_info.tag.gender
+
+    if gender == 'masc':
+        return verb + 'л'
+    elif gender == 'femn':
+        return verb + 'ла'
+    elif gender == 'neut':
+        return verb + 'ло'
+    else:
+        return verb
+
+
+async def make_end_text(user_id):
+    text = 'Вот и всё на этом! Осталось лишь подвести итоги нашей игры. А вот как раз и они: '
+
+    users_data = dict(await get_data(user_id, 'users_data'))
+    for data in list(list(users_data.values())):
+        point_word = await agree_word(int(data["points"]), ['балл', 'балла', 'баллов'])
+        text += f'{data["name"]} {await agree_verb_with_proper_noun("набра", data["name"])} {data["points"]} {point_word}, '
+    text = text[:-2] + '. '
+    sorted_lst = sorted(list(users_data.values()), key=lambda x: x["points"], reverse=True)
+    text += f'И победителем нашей викторины становится {sorted_lst[0]["name"]}! '
+
+    return text
+
+
+async def check_answer(user_answer, correct_answer):
+    # Удаление знаков препинания и приведение к нижнему регистру
+    user_answer = re.sub(r'[^\w\s]', '', user_answer.lower())
+    correct_answer = re.sub(r'[^\w\s]', '', correct_answer.lower())
+
+    # Разделение ответа пользователя и правильного ответа на слова
+    user_words = set(user_answer.split())
+    correct_words = set(correct_answer.split())
+
+    # Проверка наличия правильных слов в ответе пользователя
+    if correct_words.issubset(user_words):
+        return True
+
+    # Поиск схожих слов с помощью алгоритма Левенштейна
+    for correct_word in correct_words:
+        for user_word in user_words:
+            # Расчет расстояния Левенштейна между словами
+            distance = await levenshtein_distance(correct_word, user_word)
+            # Если расстояние меньше или равно 2 (настраиваемый порог),
+            # то считаем слова похожими и считаем ответ пользователя правильным
+
+            if distance <= 1.5:
+                return True
+
+    return False
+
+
+async def levenshtein_distance(s, t):
+    if s == t:
+        return 0
+    elif len(s) == 0:
+        return len(t)
+    elif len(t) == 0:
+        return len(s)
+    else:
+        v0 = [None] * (len(t) + 1)
+        v1 = [None] * (len(t) + 1)
+
+        for i in range(len(v0)):
+            v0[i] = i
+
+        for i in range(len(s)):
+            v1[0] = i + 1
+            for j in range(len(t)):
+                cost = 0 if s[i] == t[j] else 1
+                v1[j + 1] = min(v1[j] + 1, v0[j + 1] + 1, v0[j] + cost)
+            for j in range(len(v0)):
+                v0[j] = v1[j]
+
+        return v1[len(t)]
 
 
 @dp.request_handler(state="*", contains=cancel_text)
@@ -352,10 +475,11 @@ async def handle_user_names(alice_request):
         'points': 0
     } for i in range(len(user_list))}
     print(users)
-    turns_in_this_round = random.randrange(1, 4)
+    turns_in_this_round = random.randrange(2, 4)
     await dp.storage.update_data(m.user_id, user_counts=len(user_list), users_data=users, user_list=user_list,
                                  curr_turn=0, curr_question='', hint_count=0, left_points=points_for_win, curr_round=0,
-                                 turns_in_this_round=turns_in_this_round, curr_round_turn=0)
+                                 turns_in_this_round=turns_in_this_round, curr_round_turn=0, excluded_ids=[1],
+                                 is_super_round=0)
 
     user_string = ', '.join(user_list)
     text = random.choice(will_play_message) + user_string + ". Вcё правильно?"
@@ -399,11 +523,16 @@ async def handle_game(alice_request):
     curr_question = await get_curr_question(m.user_id)
     curr_turn = await get_curr_turn(m.user_id)
     text = ''
+    is_super_round = await get_data(m.user_id, 'is_super_round')
+    print('super', is_super_round)
     if 'подска' in m.command.lower():
+        if is_super_round:
+            text = 'Это супер-раунд, здесь не работают подсказки!'
+            return alice_request.response(text)
         hint_count = await get_data(m.user_id, 'hint_count')
         hint_count = int(hint_count)
         left_points = await get_data(m.user_id, 'left_points')
-        if left_points - 2 < 0:
+        if left_points - 2 < 1:
             text = random.choice(not_enough_points_messages)
         else:
             match hint_count:
@@ -432,16 +561,22 @@ async def handle_game(alice_request):
         question = curr_question
 
         text = question[1]
-    elif 'пас' == m.command.lower():
+    elif 'пас' == m.command.lower() and not is_super_round:
 
         text = "Хорошо, пропускаем. "
-        await update_turn(m.user_id)
-
-        curr_round = await get_data(m.user_id, 'curr_round')
+        code = await update_turn(m.user_id)
+        turn_text = ''
         new_round_tts = ''
-        if curr_round == 0:
+        if code == 1:
+
             new_round_tts += sounds['next_round']
-        turn_text = await make_turn_text(m.user_id)
+            curr_round = await get_data(m.user_id, 'curr_round')
+            turn_text += f'Мы начинаем раунд {curr_round + 1}. '
+
+        elif code == 2:
+            new_round_tts += sounds['super']
+            text += random.choice(super_round_message)
+        turn_text += await make_turn_text(m.user_id)
         print("Ready")
         return alice_request.response(text + turn_text, tts=sounds['skip'] + text + new_round_tts + turn_text)
     elif 'очередь' in m.command.lower():
@@ -454,23 +589,31 @@ async def handle_game(alice_request):
         question_data = curr_question
         answer = question_data[2]
         print(answer.lower(), m.command.lower())
-
-        if answer.lower() in m.command.lower():
+        corr_answer = await check_answer(m.command.lower(), answer.lower())
+        if corr_answer:
             points = await get_data(m.user_id, "left_points")
+            if is_super_round:
+                points = 10
             point_word = await agree_word(int(points), ['балл', 'балла', 'баллов'])
-            text = f"{random.choice(right_answer_messages)}. Вы получаете {points} {point_word}. "
+            text = f"{random.choice(right_answer_messages)} Вы получаете {points} {point_word}. "
             await update_points(m.user_id)
             print(await get_data(m.user_id, 'users_data'))
-            await update_turn(m.user_id)
+            await update_excluded_ids(m.user_id, question_data[0])
+            code = await update_turn(m.user_id)
 
-            curr_round = await get_data(m.user_id, 'curr_round')
             new_round_tts = ''
-            if curr_round == 0:
+            turn_text = ''
+            if code == 1:
                 new_round_tts += sounds['next_round']
-            turn_text = await make_turn_text(m.user_id)
+                curr_round = await get_data(m.user_id, 'curr_round')
+                turn_text += f'Мы начинаем раунд {curr_round + 1}. '
 
+            elif code == 2:
+                new_round_tts += sounds['super']
+                text += random.choice(super_round_message)
+
+            turn_text += await make_turn_text(m.user_id)
             return alice_request.response(text + turn_text, tts=sounds['right'] + text + new_round_tts + turn_text)
-
 
         else:
 
@@ -479,16 +622,42 @@ async def handle_game(alice_request):
             text = random.choice(wrong_answer_messages)
             new_round_tts = ''
             turn_text = ''
-            if points - minus_points_for_wrong_answer < 0:
+            res_sound = ''
+            end_text = ''
+            end_s = False
+            sound = sounds['wrong']
+            if points - minus_points_for_wrong_answer < 0 or is_super_round:
                 text = random.choice(zero_point_messages)
-                await update_turn(m.user_id)
-                curr_round = await get_data(m.user_id, 'curr_round')
+                if is_super_round:
+                    turn_text = await make_out_text(m.user_id)
+                    player_list = list(await get_players_list(m.user_id))
+                    sound = sounds['death']
+                    print(player_list)
 
-                if curr_round == 0:
+                code = await update_turn(m.user_id)
+
+                if code == 1:
                     new_round_tts += sounds['next_round']
-                turn_text = await make_turn_text(m.user_id)
+                    curr_round = await get_data(m.user_id, 'curr_round')
+                    turn_text += f'Мы начинаем раунд {curr_round + 1}. '
 
-            return alice_request.response(text + turn_text, tts=sounds['wrong'] + text + turn_text + new_round_tts)
+
+                elif code == 2:
+                    new_round_tts += sounds['super']
+                    text += random.choice(super_round_message)
+
+                elif code == 3:
+                    new_round_tts += sounds['end']
+                    text += await make_end_text(m.user_id)
+                    res_sound = sounds['res']
+                    end_text = 'И теперь точно всё на этом, увидимся в следующей викторине!'
+                    turn_text = ''
+                    await dp.storage.reset_state(m.user_id)
+                if code != 3:
+                    turn_text += await make_turn_text(m.user_id)
+            return alice_request.response(text + turn_text + end_text,
+                                          tts=sound + text + new_round_tts + turn_text + res_sound + end_text
+                                          )
 
     return alice_request.response(text)
 

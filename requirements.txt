@@ -6,3 +6,4 @@ python-dotenv~=1.0.0
 natasha~=1.5.0
 nltk~=3.8.1
 pymorphy3~=1.2.0
+pymorphy2~=0.9.1
