@@ -274,6 +274,7 @@ async def make_out_text(user_id):
 
 
 async def agree_verb_with_proper_noun(verb, proper_noun):
+    morph = pymorphy2.MorphAnalyzer()
     parsed = morph.parse(proper_noun)
     noun_info = parsed[0]
     gender = noun_info.tag.gender
@@ -674,6 +675,5 @@ async def handle_all_other_requests(alice_request):
 
 
 if __name__ == '__main__':
-    morph = pymorphy2.MorphAnalyzer()
     app = get_new_configured_app(dispatcher=dp, path=WEBHOOK_URL_PATH)
     web.run_app(app, host=WEBAPP_HOST, port=WEBAPP_PORT, loop=dp.loop)
