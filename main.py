@@ -1,9 +1,3 @@
-import pathlib
-import sys
-import os
-
-if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
-    os.environ["PYMORPHY2_DICT_PATH"] = str(pathlib.Path(sys._MEIPASS).joinpath('pymorphy2_dicts_ru/data'))
 import logging
 import os
 import random
@@ -11,7 +5,6 @@ import re
 import nltk
 import psycopg2
 import pymorphy2
-import pymorphy2_dicts_ru
 
 from aioalice.utils.helper import Helper, HelperMode, Item
 from aiohttp import web
@@ -22,12 +15,12 @@ from store import *
 
 load_dotenv()
 WEBHOOK_URL_PATH = '/my-alice-webhook/'  # webhook endpoint
-
+morph = pymorphy2.MorphAnalyzer(lang='ru')
 WEBAPP_HOST = 'localhost'
 WEBAPP_PORT = 3001
 SKILL_ID = os.getenv("SKILL_ID")
 OAUTH_TOKEN = os.getenv("OAUTH_TOKEN")
-pymorphy2_dicts_ru.get_path()
+
 logging.basicConfig(format=u'%(filename)s [LINE:%(lineno)d] #%(levelname)-8s [%(asctime)s]  %(message)s',
                     level=logging.INFO)
 nltk.download('punkt')
@@ -275,9 +268,6 @@ async def make_out_text(user_id):
     await dp.storage.update_data(user_id, user_list=player_list, curr_turn=curr_turn - 1)
 
     return text
-
-
-morph = pymorphy2.MorphAnalyzer(lang='ru')
 
 
 async def agree_verb_with_proper_noun(verb, proper_noun):
