@@ -277,8 +277,10 @@ async def make_out_text(user_id):
     return text
 
 
+morph = pymorphy2.MorphAnalyzer(lang='ru')
+
+
 async def agree_verb_with_proper_noun(verb, proper_noun):
-    morph = pymorphy2.MorphAnalyzer(lang='ru')
     parsed = morph.parse(proper_noun)
     noun_info = parsed[0]
     gender = noun_info.tag.gender
