@@ -15,7 +15,7 @@ from store import *
 
 load_dotenv()
 WEBHOOK_URL_PATH = '/my-alice-webhook/'  # webhook endpoint
-morph = pymorphy2.MorphAnalyzer(lang='ru')
+
 WEBAPP_HOST = 'localhost'
 WEBAPP_PORT = 3001
 SKILL_ID = os.getenv("SKILL_ID")
@@ -268,6 +268,9 @@ async def make_out_text(user_id):
     await dp.storage.update_data(user_id, user_list=player_list, curr_turn=curr_turn - 1)
 
     return text
+
+
+morph = pymorphy2.MorphAnalyzer()
 
 
 async def agree_verb_with_proper_noun(verb, proper_noun):
