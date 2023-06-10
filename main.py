@@ -4,7 +4,7 @@ import random
 import re
 import nltk
 import psycopg2
-
+import pymorphy2
 
 from aioalice.utils.helper import Helper, HelperMode, Item
 from aiohttp import web
@@ -23,7 +23,8 @@ OAUTH_TOKEN = os.getenv("OAUTH_TOKEN")
 
 logging.basicConfig(format=u'%(filename)s [LINE:%(lineno)d] #%(levelname)-8s [%(asctime)s]  %(message)s',
                     level=logging.INFO)
-
+nltk.download('punkt')
+nltk.download('averaged_perceptron_tagger_ru')
 # Создаем экземпляр диспетчера и подключаем хранилище в памяти
 dp = Dispatcher(storage=MemoryStorage(), skill_id=SKILL_ID, oauth_token=OAUTH_TOKEN)
 numbers_t = {'один': 1, 'два': 2, 'три': 3, 'четыре': 4, 'пять': 5, 'шесть': 6, 'семь': 7}
@@ -272,20 +273,20 @@ async def make_out_text(user_id):
     return text
 
 
-# async def agree_verb_with_proper_noun(verb, proper_noun):
-#     morph = pymorphy2.MorphAnalyzer()
-#     parsed = morph.parse(proper_noun)
-#     noun_info = parsed[0]
-#     gender = noun_info.tag.gender
-#
-#     if gender == 'masc':
-#         return verb + 'л'
-#     elif gender == 'femn':
-#         return verb + 'ла'
-#     elif gender == 'neut':
-#         return verb + 'ло'
-#     else:
-#         return verb
+async def agree_verb_with_proper_noun(verb, proper_noun):
+    morph = pymorphy2.MorphAnalyzer()
+    parsed = morph.parse(proper_noun)
+    noun_info = parsed[0]
+    gender = noun_info.tag.gender
+
+    if gender == 'masc':
+        return verb + 'л'
+    elif gender == 'femn':
+        return verb + 'ла'
+    elif gender == 'neut':
+        return verb + 'ло'
+    else:
+        return verb
 
 
 async def make_end_text(user_id):
