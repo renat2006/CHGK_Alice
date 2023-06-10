@@ -479,11 +479,12 @@ async def handle_user_names(alice_request):
     } for i in range(len(user_list))}
     print(users)
     turns_in_this_round = random.randrange(2, 4)
+    print('Yet')
     await dp.storage.update_data(m.user_id, user_counts=len(user_list), users_data=users, user_list=user_list,
                                  curr_turn=0, curr_question='', hint_count=0, left_points=points_for_win, curr_round=0,
                                  turns_in_this_round=turns_in_this_round, curr_round_turn=0, excluded_ids=[1],
                                  is_super_round=0)
-
+    print('Not_yet')
     user_string = ', '.join(user_list)
     text = random.choice(will_play_message) + user_string + ". Вcё правильно?"
     await dp.storage.set_state(m.user_id, GameStates.PLAYERS_RIGHT_CHECK)
