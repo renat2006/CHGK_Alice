@@ -60,6 +60,7 @@ async def get_names(text):
     morph = pymorphy2.MorphAnalyzer()
     names = []
 
+
     # Удаление знаков препинания
     text_without_punctuation = re.sub(r'[^\w\s]', '', text)
 
