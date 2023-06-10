@@ -460,8 +460,9 @@ async def handle_user_names(alice_request):
     if alice_request.request.command == "ping":
         return alice_request.response('pong')
     m = Message(alice_request)
-    user_list = await get_names(m.command)
     print('May-Be')
+    user_list = await get_names(m.command)
+
     if not user_list or len(user_list) > 7:
         text = random.choice(wrong_players_count_named_messages) + random.choice(help_messages)
         return alice_request.response(text)
