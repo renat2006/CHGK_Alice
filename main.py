@@ -4,7 +4,7 @@ import random
 import re
 import nltk
 import psycopg2
-import pymorphy2
+
 
 from aioalice.utils.helper import Helper, HelperMode, Item
 from aiohttp import web
