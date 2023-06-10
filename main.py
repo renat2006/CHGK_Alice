@@ -273,20 +273,20 @@ async def make_out_text(user_id):
     return text
 
 
-async def agree_verb_with_proper_noun(verb, proper_noun):
-    morph = pymorphy2.MorphAnalyzer()
-    parsed = morph.parse(proper_noun)
-    noun_info = parsed[0]
-    gender = noun_info.tag.gender
-
-    if gender == 'masc':
-        return verb + 'л'
-    elif gender == 'femn':
-        return verb + 'ла'
-    elif gender == 'neut':
-        return verb + 'ло'
-    else:
-        return verb
+# async def agree_verb_with_proper_noun(verb, proper_noun):
+#     morph = pymorphy2.MorphAnalyzer()
+#     parsed = morph.parse(proper_noun)
+#     noun_info = parsed[0]
+#     gender = noun_info.tag.gender
+#
+#     if gender == 'masc':
+#         return verb + 'л'
+#     elif gender == 'femn':
+#         return verb + 'ла'
+#     elif gender == 'neut':
+#         return verb + 'ло'
+#     else:
+#         return verb
 
 
 async def make_end_text(user_id):
