@@ -56,18 +56,21 @@ class Message:
         self.command = alice_request.request.command
 
 
-async def get_names(string):
-    # Разбиваем текст на токены (слова)
-    tokens = nltk.word_tokenize(string, language='russian')
+async def extract_russian_names(text):
+    morph = pymorphy2.MorphAnalyzer()
+    names = []
 
-    # Определяем части речи для каждого токена
-    pos_tags = nltk.pos_tag(tokens, lang='rus')
+    # Удаление знаков препинания
+    text_without_punctuation = re.sub(r'[^\w\s]', '', text)
 
-    # Фильтруем токены, оставляя только имена собственные (имена, фамилии, географические названия и проч.)
-    proper_names = [token for token, pos in pos_tags if pos.startswith('S')]
+    words = text_without_punctuation.split()
+    for word in words:
+        parsed_word = morph.parse(word)[0]
+        if 'Name' in parsed_word.tag:
+            name_in_normal_form = parsed_word.normal_form
+            names.append(name_in_normal_form)
 
-    # Возвращаем список имен собственных
-    return proper_names
+    return names
 
 
 async def agree_word(number, word_forms):
