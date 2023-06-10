@@ -461,7 +461,7 @@ async def handle_user_names(alice_request):
         return alice_request.response('pong')
     m = Message(alice_request)
     user_list = await get_names(m.command)
-
+    print('May-Be')
     if not user_list or len(user_list) > 7:
         text = random.choice(wrong_players_count_named_messages) + random.choice(help_messages)
         return alice_request.response(text)
