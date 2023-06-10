@@ -328,7 +328,7 @@ async def check_answer(user_answer, correct_answer):
             # Если расстояние меньше или равно 2 (настраиваемый порог),
             # то считаем слова похожими и считаем ответ пользователя правильным
 
-            if distance <= 1.5:
+            if distance <= 3:
                 return True
 
     return False
