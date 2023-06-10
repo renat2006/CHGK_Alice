@@ -56,7 +56,7 @@ class Message:
         self.command = alice_request.request.command
 
 
-async def extract_russian_names(text):
+async def get_names(text):
     morph = pymorphy2.MorphAnalyzer()
     names = []
 
