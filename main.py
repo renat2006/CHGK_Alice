@@ -133,7 +133,7 @@ async def check_intent(alice_request):
 
 async def get_random_question(excluded_ids, count=1):
     conn = psycopg2.connect("""
-        host=localhostе
+        host=localhost
         port=5432
         dbname=chgk
         user=postgres
